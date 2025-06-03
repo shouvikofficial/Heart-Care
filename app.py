@@ -2,21 +2,23 @@ from flask import Flask, render_template, request
 import pandas as pd
 import joblib
 import os
-import tempfile
-import shutil
 from retrain import retrain_model
 
 app = Flask(__name__)
-DATA_FILE = 'NewData.xlsx'  # Store only new user data
+DATA_FILE = 'NewData.xlsx'
+MAIN_FILE = 'MainData.xlsx'
+
 
 def load_model_and_scaler():
     model = joblib.load('best_model.pkl')
     scaler = joblib.load('scaler.pkl')
     return model, scaler
 
+
 @app.route('/')
 def home():
     return render_template('index.html')
+
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -24,7 +26,11 @@ def predict():
     name = form_data.get("name")
     email = form_data.get("email")
 
-    # Extract features
+    feature_columns = [
+        "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
+        "heartRate", "exang", "oldpeak", "BMI", "diaBP", "glucose", "Smkr"
+    ]
+
     features = [
         float(form_data.get("age")),
         float(form_data.get("sex")),
@@ -42,49 +48,39 @@ def predict():
         float(form_data.get("Smkr"))
     ]
 
-    # Load model and scaler
     model, scaler = load_model_and_scaler()
-    input_data = scaler.transform([features])
+    input_df = pd.DataFrame([features], columns=feature_columns)
+    input_data = scaler.transform(input_df)
     prediction = model.predict(input_data)[0]
     overall_result = "At Risk" if prediction == 1 else "Not At Risk"
 
-    # Save user data + prediction to Excel safely
-    new_row = pd.DataFrame([{
-        "age": features[0],
-        "sex": features[1],
-        "cp": features[2],
-        "trestbps": features[3],
-        "chol": features[4],
-        "fbs": features[5],
-        "restecg": features[6],
-        "heartRate": features[7],
-        "exang": features[8],
-        "oldpeak": features[9],
-        "BMI": features[10],
-        "diaBP": features[11],
-        "glucose": features[12],
-        "Smkr": features[13],
-        "target": prediction
-    }])
+    new_row = input_df.copy()
+    new_row["target"] = prediction
 
     try:
-        if os.path.exists(DATA_FILE):
-            existing = pd.read_excel(DATA_FILE)
-            updated = pd.concat([existing, new_row], ignore_index=True)
+        if os.path.exists(MAIN_FILE):
+            main_df = pd.read_excel(MAIN_FILE)
         else:
-            updated = new_row
+            main_df = pd.DataFrame(columns=feature_columns + ['target'])
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp:
-            temp_path = tmp.name
-        updated.to_excel(temp_path, index=False)
-        shutil.move(temp_path, DATA_FILE)
+        main_df_comp = main_df.drop(columns=['target'], errors='ignore')
+        new_row_comp = new_row.drop(columns=['target'], errors='ignore')
+        main_df_comp, new_row_comp = main_df_comp.align(new_row_comp, axis=1, fill_value=None)
+
+        is_duplicate = any((main_df_comp == new_row_comp.iloc[0]).all(axis=1))
+
+        if not is_duplicate:
+            if os.path.exists(DATA_FILE):
+                existing = pd.read_excel(DATA_FILE)
+                updated = pd.concat([existing, new_row], ignore_index=True)
+            else:
+                updated = new_row
+            updated.to_excel(DATA_FILE, index=False)
+            retrain_model()
+
     except Exception as e:
-        print(f"Error writing to Excel: {e}")
+        print(f"Error handling data files: {e}")
 
-    # Retrain model
-    retrain_model()
-
-    # Prepare result
     user_data = {
         "Name": name,
         "Email": email,
@@ -112,6 +108,7 @@ def predict():
         overall_result=overall_result,
         prediction=prediction
     )
+
 
 if __name__ == '__main__':
     app.run(debug=True)
