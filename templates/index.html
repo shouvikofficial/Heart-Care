@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Heart Failure Predictor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <div class="splash-content">
+            <img src="https://static.vecteezy.com/system/resources/previews/025/298/175/non_2x/heart-attack-icon-design-vector.jpg" alt="Heart Icon" />
+            <h1>Welcome to HeartCare</h1>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-content" style="display: none;">
+        <div class="container">
+            <h1>Heart Failure Risk Prediction</h1>
+            <div class="illustration">
+                <img src="https://cdn-icons-png.flaticon.com/512/4694/4694753.png" alt="Heart Icon" />
+            </div>
+
+            <form method="POST" action="/predict" onsubmit="return handleFormSubmit(event)">
+
+
+                <label>Your Name</label>
+                <input type="text" name="name" required>
+
+                <label>Email Address</label>
+                <input type="email" name="email" required>
+
+                <label>Age</label>
+                <input type="number" name="age" id="age" required min="1" max="120">
+                <small class="error-msg" id="error-age">Age must be between 1 and 120</small>
+
+                <label>Sex</label>
+                <select name="sex" required>
+                    <option value="0">Female</option>
+                    <option value="1">Male</option>
+                </select>
+
+                <label>Smoker</label>
+                <select name="Smkr" required>
+                    <option value="0">No</option>
+                    <option value="1">Yes</option>
+                </select>
+
+                <label>Oldpeak</label>
+                <input type="number" step="any" name="oldpeak" required>
+
+                <label>Fasting Blood Sugar</label>
+                <select name="fbs" required>
+                    <option value="0">No</option>
+                    <option value="1">Yes</option>
+                </select>
+
+                <label>Chest Pain Type</label>
+                <select name="cp" required>
+                    <option value="0">Typical Angina</option>
+                    <option value="1">Atypical Angina</option>
+                    <option value="2">Non-anginal Pain</option>
+                    <option value="3">Asymptomatic</option>
+                </select>
+
+                <label>Resting ECG</label>
+                <select name="restecg" required>
+                    <option value="0">Normal</option>
+                    <option value="1">ST-T Abnormality</option>
+                    <option value="2">LV Hypertrophy</option>
+                </select>
+
+                <label>Exercise Induced Angina</label>
+                <select name="exang" required>
+                    <option value="0">No</option>
+                    <option value="1">Yes</option>
+                </select>
+
+                <label>Cholesterol</label>
+                <input type="number" name="chol" id="chol" required min="50" max="600">
+                <small class="error-msg" id="error-chol">Cholesterol must be 50–600</small>
+
+                <label>Resting Blood Pressure</label>
+                <input type="number" name="trestbps" id="trestbps" required min="60" max="200">
+                <small class="error-msg" id="error-trestbps">BP must be 60–200</small>
+
+                <label>Diastolic BP</label>
+                <input type="number" name="diaBP" required>
+
+                <label>BMI</label>
+                <input type="number" step="any" name="BMI" id="BMI" required min="10" max="60">
+                <small class="error-msg" id="error-BMI">BMI must be 10–60</small>
+
+                <label>Heart Rate</label>
+                <input type="number" name="heartRate" id="heartRate" required min="30" max="250">
+                <small class="error-msg" id="error-heartRate">Heart Rate must be 30–250</small>
+
+                <label>Glucose</label>
+                <input type="number" name="glucose" id="glucose" required min="40" max="300">
+                <small class="error-msg" id="error-glucose">Glucose must be 40–300</small>
+
+                <button type="submit">Predict</button>
+            </form>
+            <div id="loading" style="display: none; text-align: center; margin-top: 20px;">
+    <div class="spinner"></div>
+    <p>Analyzing your data, please wait...</p>
+</div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Splash screen logic
+        window.addEventListener("load", () => {
+            setTimeout(() => {
+                document.getElementById("splash-screen").style.display = "none";
+                document.getElementById("main-content").style.display = "block";
+            }, 2500);
+        });
+
+        // Real-time validation alerts
+        document.addEventListener("DOMContentLoaded", function () {
+            const fields = [
+                { id: "age", min: 1, max: 120 },
+                { id: "chol", min: 50, max: 600 },
+                { id: "glucose", min: 40, max: 300 },
+                { id: "BMI", min: 10, max: 60 },
+                { id: "heartRate", min: 30, max: 250 },
+                { id: "trestbps", min: 60, max: 200 }
+            ];
+
+            fields.forEach(field => {
+                const input = document.getElementById(field.id);
+                const errorMsg = document.getElementById(`error-${field.id}`);
+
+                input.addEventListener("input", () => {
+                    const val = parseFloat(input.value);
+                    if (isNaN(val) || val < field.min || val > field.max) {
+                        input.classList.add("shake");
+                        errorMsg.style.display = "block";
+                    } else {
+                        input.classList.remove("shake");
+                        errorMsg.style.display = "none";
+                    }
+                });
+            });
+        });
+
+        // Final form check before submission
+        function validateForm() {
+            const fields = [
+                { id: "age", min: 1, max: 120 },
+                { id: "chol", min: 50, max: 600 },
+                { id: "glucose", min: 40, max: 300 },
+                { id: "BMI", min: 10, max: 60 },
+                { id: "heartRate", min: 30, max: 250 },
+                { id: "trestbps", min: 60, max: 200 }
+            ];
+            let valid = true;
+
+            fields.forEach(field => {
+                const input = document.getElementById(field.id);
+                const errorMsg = document.getElementById(`error-${field.id}`);
+                const val = parseFloat(input.value);
+
+                if (isNaN(val) || val < field.min || val > field.max) {
+                    errorMsg.style.display = "block";
+                    input.classList.add("shake");
+                    valid = false;
+                } else {
+                    errorMsg.style.display = "none";
+                    input.classList.remove("shake");
+                }
+            });
+
+            return valid;
+        }
+
+    function handleFormSubmit(event) {
+    if (!validateForm()) {
+        return false;
+    }
+
+    // Show loading animation
+    document.querySelector("form").style.display = "none";
+    document.getElementById("loading").style.display = "block";
+
+    return true; // allow the form to submit
+}
+
+window.addEventListener("pageshow", function () {
+    // Show form, hide loading spinner on page load or back navigation
+    const form = document.querySelector("form");
+    const loading = document.getElementById("loading");
+
+    if (form) form.style.display = "block";
+    if (loading) loading.style.display = "none";
+});
+
+
+    </script>
+</body>
+</html>

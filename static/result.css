@@ -1,0 +1,91 @@
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f4f9fc;
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
+
+.container {
+    max-width: 700px;
+    margin: 2rem auto;
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    color: #009688;
+    text-align: center;
+}
+
+.email {
+    text-align: center;
+    font-size: 1rem;
+    color: #777;
+    margin-bottom: 2rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 2rem;
+}
+
+table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #ddd;
+    font-size: 1rem;
+}
+
+.result {
+    text-align: center;
+}
+
+.result h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.risk {
+    color: red;
+    font-weight: bold;
+}
+
+.safe {
+    color: green;
+    font-weight: bold;
+}
+
+/* Graph styling */
+.analysis-section h3 {
+    text-align: center;
+    margin-top: 2rem;
+    font-size: 1.2rem;
+}
+
+.progress-bar-container {
+    width: 100%;
+    background: #eee;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 1rem 0;
+    height: 30px;
+}
+
+.progress-bar {
+    height: 100%;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+    line-height: 30px;
+    border-radius: 10px 0 0 10px;
+    transition: width 1s ease;
+}
+
+.risk-info {
+    font-size: 1rem;
+    text-align: center;
+    margin-top: 1rem;
+}
