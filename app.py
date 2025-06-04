@@ -72,11 +72,15 @@ def predict():
         if not is_duplicate:
             if os.path.exists(DATA_FILE):
                 existing = pd.read_excel(DATA_FILE)
-                updated = pd.concat([existing, new_row], ignore_index=True)
+                if existing.empty or existing.isna().all().all():
+                    updated = new_row.copy()
+                else:
+                    updated = pd.concat([existing, new_row], ignore_index=True)
             else:
                 updated = new_row
             updated.to_excel(DATA_FILE, index=False)
             retrain_model()
+            
     except Exception as e:
         print(f"❌ Error saving or processing data: {e}")
 
