@@ -15,7 +15,13 @@ def load_model_and_scaler():
 
 @app.route('/')
 def home():
+    return render_template('home.html')
+
+@app.route('/form')
+def form():
     return render_template('index.html')
+
+
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -80,7 +86,7 @@ def predict():
                 updated = new_row
             updated.to_excel(DATA_FILE, index=False)
             retrain_model()
-            
+
     except Exception as e:
         print(f"❌ Error saving or processing data: {e}")
 
