@@ -8,17 +8,14 @@ app = Flask(__name__)
 DATA_FILE = 'NewData.xlsx'
 MAIN_FILE = 'MainData.xlsx'
 
-
 def load_model_and_scaler():
     model = joblib.load('best_model.pkl')
     scaler = joblib.load('scaler.pkl')
     return model, scaler
 
-
 @app.route('/')
 def home():
     return render_template('index.html')
-
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -26,32 +23,35 @@ def predict():
     name = form_data.get("name")
     email = form_data.get("email")
 
+    try:
+        features = [
+            float(form_data.get("age")),
+            float(form_data.get("sex")),
+            float(form_data.get("cp")),
+            float(form_data.get("trestbps")),
+            float(form_data.get("chol")),
+            float(form_data.get("fbs")),
+            float(form_data.get("restecg")),
+            float(form_data.get("heartRate")),
+            float(form_data.get("exang")),
+            float(form_data.get("oldpeak")),
+            float(form_data.get("BMI")),
+            float(form_data.get("diaBP")),
+            float(form_data.get("glucose")),
+            float(form_data.get("Smkr"))
+        ]
+    except (TypeError, ValueError):
+        return "❌ Invalid input values. Please check the form."
+
     feature_columns = [
         "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
         "heartRate", "exang", "oldpeak", "BMI", "diaBP", "glucose", "Smkr"
     ]
 
-    features = [
-        float(form_data.get("age")),
-        float(form_data.get("sex")),
-        float(form_data.get("cp")),
-        float(form_data.get("trestbps")),
-        float(form_data.get("chol")),
-        float(form_data.get("fbs")),
-        float(form_data.get("restecg")),
-        float(form_data.get("heartRate")),
-        float(form_data.get("exang")),
-        float(form_data.get("oldpeak")),
-        float(form_data.get("BMI")),
-        float(form_data.get("diaBP")),
-        float(form_data.get("glucose")),
-        float(form_data.get("Smkr"))
-    ]
-
     model, scaler = load_model_and_scaler()
     input_df = pd.DataFrame([features], columns=feature_columns)
-    input_data = scaler.transform(input_df)
-    prediction = model.predict(input_data)[0]
+    input_scaled = scaler.transform(input_df)
+    prediction = model.predict(input_scaled)[0]
     overall_result = "At Risk" if prediction == 1 else "Not At Risk"
 
     new_row = input_df.copy()
@@ -72,42 +72,51 @@ def predict():
         if not is_duplicate:
             if os.path.exists(DATA_FILE):
                 existing = pd.read_excel(DATA_FILE)
-                if existing.empty or existing.isna().all().all():
-                    updated = new_row.copy()
-                else:
-                    updated = pd.concat([existing, new_row], ignore_index=True)
+                updated = pd.concat([existing, new_row], ignore_index=True)
             else:
                 updated = new_row
             updated.to_excel(DATA_FILE, index=False)
             retrain_model()
-
     except Exception as e:
-        print(f"Error handling data files: {e}")
+        print(f"❌ Error saving or processing data: {e}")
 
-    user_data = {
-        "Name": name,
-        "Email": email,
-        "Age": form_data.get("age"),
-        "Gender": "Male" if form_data.get("sex") == "1" else "Female",
-        "Chest Pain Type": form_data.get("cp"),
-        "Resting Blood Pressure (in mm/Hg)": form_data.get("trestbps"),
-        "Cholesterol Level": form_data.get("chol"),
-        "Fasting Blood Sugar > 120 mg/dl": form_data.get("fbs"),
-        "Resting ECG Result": form_data.get("restecg"),
-        "Max Heart Rate": form_data.get("heartRate"),
-        "Exercise Induced Angina": form_data.get("exang"),
-        "Oldpeak": form_data.get("oldpeak"),
-        "BMI": form_data.get("BMI"),
-        "Diastolic BP": form_data.get("diaBP"),
-        "Glucose": form_data.get("glucose"),
-        "Smoker": form_data.get("Smkr")
-    }
+    
+    def convert_user_data(data):
+        cp_map = ['Typical Angina', 'Atypical Angina', 'Non-anginal Pain', 'Asymptomatic']
+        ecg_map = ['Normal', 'ST-T Abnormality', 'LV Hypertrophy']
+
+        mapped_data = {}
+        for key, value in data.items():
+            try:
+                val = int(value)
+            except:
+                mapped_data[key] = value
+                continue
+
+            if key == 'sex':
+                mapped_data[key] = 'Male' if val == 1 else 'Female'
+            elif key == 'Smkr':
+                mapped_data[key] = 'Yes' if val == 1 else 'No'
+            elif key == 'fbs':
+                mapped_data[key] = 'Yes' if val == 1 else 'No'
+            elif key == 'cp':
+                mapped_data[key] = cp_map[val]
+            elif key == 'restecg':
+                mapped_data[key] = ecg_map[val]
+            elif key == 'exang':
+                mapped_data[key] = 'Yes' if val == 1 else 'No'
+            else:
+                mapped_data[key] = value
+
+        return mapped_data
+
+    display_data = convert_user_data(form_data)
 
     return render_template(
         "result.html",
         name=name,
         email=email,
-        user_data=user_data,
+        user_data=display_data,
         overall_result=overall_result,
         prediction=prediction
     )

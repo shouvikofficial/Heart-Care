@@ -89,3 +89,25 @@ table td {
     text-align: center;
     margin-top: 1rem;
 }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+td {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    text-transform: capitalize;
+}
+
+
+@media (max-width: 600px) {
+    table td {
+        display: block;
+        width: 100%;
+    }
+    table tr {
+        margin-bottom: 10px;
+    }
+}

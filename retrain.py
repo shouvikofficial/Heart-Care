@@ -1,53 +1,69 @@
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
+from imblearn.over_sampling import SMOTE
 import joblib
 import os
+import warnings
 
 def retrain_model():
     main_file = 'MainData.xlsx'
     new_file = 'NewData.xlsx'
 
-    # Load both files
+    # Load data
     main_df = pd.read_excel(main_file) if os.path.exists(main_file) else pd.DataFrame()
     new_df = pd.read_excel(new_file) if os.path.exists(new_file) else pd.DataFrame()
 
-    # Combine both
+    # Combine datasets
     combined_df = pd.concat([main_df, new_df], ignore_index=True)
 
     # Drop rows without target
     combined_df = combined_df.dropna(subset=['target'])
 
     if combined_df.empty:
-        print("No valid data with targets found.")
+        warnings.warn("⚠️ No valid data with targets found. Retraining aborted.")
         return
 
-    # Define features
+    # Features and target
     feature_columns = [
         "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
         "heartRate", "exang", "oldpeak", "BMI", "diaBP", "glucose", "Smkr"
     ]
 
-    X = combined_df[feature_columns]
-    y = combined_df['target']
+    try:
+        X = combined_df[feature_columns]
+        y = combined_df["target"]
 
-    # Scale and train
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+        # Class distribution
+        class_counts = y.value_counts()
+        if len(class_counts) < 2:
+            warnings.warn("⚠️ Only one class present in data. Retraining aborted.")
+            return
 
-    model = RandomForestClassifier()
-    model.fit(X_scaled, y)
+        imbalance_ratio = max(class_counts) / min(class_counts)
 
-    # Save model & scaler
-    joblib.dump(model, 'best_model.pkl')
-    joblib.dump(scaler, 'scaler.pkl')
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
 
-    print("✅ Model retrained and saved.")
+        if imbalance_ratio >= 2.1:
+            print(f"⚠️ Imbalance ratio = {imbalance_ratio:.2f}, applying SMOTE...")
+            sm = SMOTE()
+            X_scaled, y = sm.fit_resample(X_scaled, y)
+        else:
+            print(f"✅ Imbalance ratio = {imbalance_ratio:.2f}, no SMOTE applied.")
 
-    # Save updated full data to MainData.xlsx
-    combined_df.to_excel(main_file, index=False)
+        model = RandomForestClassifier()
+        model.fit(X_scaled, y)
 
-    # Clear NewData.xlsx
-    if os.path.exists(new_file):
-        pd.DataFrame(columns=new_df.columns).to_excel(new_file, index=False)
+        # Save model and scaler
+        joblib.dump(model, 'best_model.pkl')
+        joblib.dump(scaler, 'scaler.pkl')
+        print("✅ Model retrained and saved.")
+
+        # Merge and save data
+        combined_df.to_excel(main_file, index=False)
+        pd.DataFrame(columns=feature_columns + ['target']).to_excel(new_file, index=False)
         print("✅ New data merged into MainData.xlsx and cleared from NewData.xlsx.")
+    
+    except Exception as e:
+        warnings.warn(f"❌ Error during retraining: {e}")

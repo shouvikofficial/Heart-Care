@@ -12,13 +12,31 @@
 
         <h2>Details Entered by You:</h2>
         <table>
-            {% for key, value in user_data.items() %}
-            <tr>
-                <td>{{ key }}</td>
-                <td>{{ value }}</td>
-            </tr>
-            {% endfor %}
-        </table>
+    {% set label_map = {
+        "age": "Age",
+        "sex": "Gender",
+        "cp": "Chest Pain Type",
+        "trestbps": "Resting Blood Pressure (mmHg)",
+        "chol": "Cholesterol Level (mg/dL)",
+        "fbs": "Fasting Blood Sugar > 120 mg/dL",
+        "restecg": "Resting ECG Result",
+        "heartRate": "Max Heart Rate Achieved",
+        "exang": "Exercise Induced Angina",
+        "oldpeak": "Oldpeak (ST Depression)",
+        "BMI": "Body Mass Index (BMI)",
+        "diaBP": "Diastolic Blood Pressure",
+        "glucose": "Glucose Level (mg/dL)",
+        "Smkr": "Smoker"
+    } %}
+
+    {% for key, value in user_data.items() %}
+    <tr>
+        <td>{{ label_map[key] if key in label_map else key }}</td>
+        <td>{{ value }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
 
         {% if prediction is not none %}
         <div class="result">
