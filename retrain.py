@@ -1,5 +1,7 @@
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from xgboost import XGBClassifier
 from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
 from sklearn.metrics import (
@@ -60,38 +62,64 @@ def retrain_model():
         # Split for evaluation
         X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
-        # Train model
-        model = RandomForestClassifier()
-        model.fit(X_train, y_train)
+        # Initialize models
+        models = {
+            "LogisticRegression": LogisticRegression(max_iter=1000, random_state=42),
+            "RandomForest": RandomForestClassifier(random_state=42),
+            "XGBoost": XGBClassifier(eval_metric='logloss', random_state=42),
+        }
 
-        # Evaluation
-        y_pred = model.predict(X_test)
-        y_proba = model.predict_proba(X_test)[:, 1]  # for ROC AUC
+        results = []
 
-        accuracy = accuracy_score(y_test, y_pred)
-        precision = precision_score(y_test, y_pred, zero_division=0)
-        recall = recall_score(y_test, y_pred, zero_division=0)
-        f1 = f1_score(y_test, y_pred, zero_division=0)
-        roc_auc = roc_auc_score(y_test, y_proba)
-        cm = confusion_matrix(y_test, y_pred)
+        # Train and evaluate each model
+        for name, model in models.items():
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_test)
+            y_proba = model.predict_proba(X_test)[:, 1]
 
-        print(f"✅ Accuracy:  {accuracy:.4f}")
-        print(f"✅ Precision: {precision:.4f}")
-        print(f"✅ Recall:    {recall:.4f}")
-        print(f"✅ F1 Score:  {f1:.4f}")
-        print(f"✅ ROC AUC:   {roc_auc:.4f}")
-        print("✅ Confusion Matrix:")
-        print(cm)
+            acc = accuracy_score(y_test, y_pred)
+            prec = precision_score(y_test, y_pred, zero_division=0)
+            rec = recall_score(y_test, y_pred, zero_division=0)
+            f1 = f1_score(y_test, y_pred, zero_division=0)
+            roc_auc = roc_auc_score(y_test, y_proba)
+            cm = confusion_matrix(y_test, y_pred)
 
-        # Save model and scaler
-        joblib.dump(model, 'best_model.pkl')
+            results.append({
+                "Model": name,
+                "Accuracy": acc,
+                "Precision": prec,
+                "Recall": rec,
+                "F1 Score": f1,
+                "ROC AUC": roc_auc,
+                "Confusion Matrix": cm,
+                "Model Object": model
+            })
+
+        # Print comparison table
+        print("\nModel Performance Comparison:")
+        print(f"{'Model':<18} {'Accuracy':<9} {'Precision':<10} {'Recall':<8} {'F1 Score':<9} {'ROC AUC':<8}")
+        for r in results:
+            print(f"{r['Model']:<18} {r['Accuracy']:<9.4f} {r['Precision']:<10.4f} {r['Recall']:<8.4f} {r['F1 Score']:<9.4f} {r['ROC AUC']:<8.4f}")
+            print(" Confusion Matrix:")
+            print(r["Confusion Matrix"])
+            print()
+
+        # Select best model by F1 Score
+        best_result = max(results, key=lambda x: x['F1 Score'])
+        best_model = best_result['Model Object']
+        best_model_name = best_result['Model']
+
+        print(f"✅ Best model based on F1 Score: {best_model_name} with F1 Score = {best_result['F1 Score']:.4f}")
+
+        # Save best model and scaler
+        joblib.dump(best_model, 'best_model.pkl')
         joblib.dump(scaler, 'scaler.pkl')
-        print("✅ Model retrained and saved.")
+        print(f"✅ Saved best model to 'best_model.pkl' and scaler to 'scaler.pkl'")
 
         # Merge and save data
         combined_df.to_excel(main_file, index=False)
         pd.DataFrame(columns=feature_columns + ['target']).to_excel(new_file, index=False)
         print("✅ New data merged into MainData.xlsx and cleared from NewData.xlsx.")
-    
+
     except Exception as e:
         warnings.warn(f"❌ Error during retraining: {e}")
