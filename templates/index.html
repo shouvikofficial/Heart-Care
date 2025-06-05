@@ -17,6 +17,21 @@
                 <img src="https://cdn-icons-png.flaticon.com/512/4694/4694753.png" alt="Heart Icon" />
             </div>
 
+            <div class="instructions-container">
+    <button id="toggle-instructions" aria-expanded="true" aria-controls="instructions" class="toggle-btn">
+    Instructions <span class="arrow">&#9650;</span>
+</button>
+    <div class="instructions" id="instructions">
+        <h2>Instructions</h2>
+        <ul>
+            <li>Fill out all fields carefully.</li>
+            <li>Make sure your data is accurate for best results.</li>
+            <li>Click Predict to analyze your heart failure risk.</li>
+        </ul>
+    </div>
+</div>
+
+
             <form method="POST" action="/predict" onsubmit="return handleFormSubmit(event)">
 
                 <label>Your Name</label>
@@ -184,6 +199,19 @@ window.addEventListener("pageshow", function () {
     if (form) form.style.display = "block";
     if (loading) loading.style.display = "none";
 });
+
+
+const toggleBtn = document.getElementById('toggle-instructions');
+const instructions = document.getElementById('instructions');
+const arrow = toggleBtn.querySelector('.arrow');
+
+toggleBtn.addEventListener('click', () => {
+    const isCollapsed = instructions.classList.toggle('collapsed');
+    toggleBtn.setAttribute('aria-expanded', !isCollapsed);
+
+    // Arrow rotation handled by CSS based on aria-expanded attribute
+});
+
 
 
     </script>

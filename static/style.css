@@ -224,3 +224,89 @@ input.shake {
     text-align: center;
 }
 
+.instructions-container {
+    margin-bottom: 32px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    background-color: #f9fafb;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+    overflow: hidden;
+}
+
+/* Toggle button styling */
+.toggle-btn {
+    width: 100%;
+    background-color: #6366f1;
+    color: white;
+    border: none;
+    padding: 14px 20px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 12px 12px 0 0;
+    user-select: none;
+    box-shadow: inset 0 -3px 5px rgba(0,0,0,0.1);
+    transition: background-color 0.3s ease;
+}
+
+.toggle-btn:hover {
+    background-color: #4f46e5;
+}
+
+.toggle-btn:focus {
+    outline: 2px solid #4f46e5;
+    outline-offset: 2px;
+}
+
+/* Instructions content styling */
+.instructions {
+    padding: 20px 24px;
+    font-size: 0.95rem;
+    color: #334155;
+    line-height: 1.5;
+    max-height: 1000px;
+    transition: max-height 0.4s ease, padding 0.4s ease;
+    border-top: 1.5px solid #cbd5e1;
+    background-color: white;
+}
+
+/* Collapsed state */
+.instructions.collapsed {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-top: none;
+    color: transparent;
+    user-select: none;
+    pointer-events: none;
+}
+
+/* Instruction heading */
+.instructions h2 {
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* Instruction list styling */
+.instructions ul {
+    list-style-type: disc;
+    padding-left: 20px;
+}
+
+.instructions ul li {
+    margin-bottom: 8px;
+}
+
+/* Arrow icon styling inside toggle button */
+.toggle-btn .arrow {
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+}
+
+.toggle-btn[aria-expanded="false"] .arrow {
+    transform: rotate(180deg);
+}

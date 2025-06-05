@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prediction Result</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='result.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 </head>
 <body>
     <div class="container">
@@ -12,7 +14,10 @@
         <p class="email">{{ email }}</p>
 
         <h2>Details Entered by You:</h2>
-        <table>
+
+        <button id="toggleDetailsBtn">Show Details</button>
+<div id="detailsTable" style="display:none;">
+     <table>
     {% set label_map = {
         "age": "Age",
         "sex": "Gender",
@@ -37,11 +42,16 @@
     </tr>
     {% endfor %}
 </table>
-
-
+</div>
+        
         {% if prediction is not none %}
         <div class="result">
             <h2>Prediction: <span class="{{ 'risk' if prediction == 1 else 'safe' }}">{{ 'At Risk' if prediction == 1 else 'Not At Risk' }}</span></h2>
+
+            <button id="shareBtn">Share Your Result</button>
+            <button id="downloadPdfBtn">Download Result as PDF</button>
+
+
 
             <!-- Graph Analysis -->
             <div class="analysis-section">
@@ -56,5 +66,68 @@
         </div>
         {% endif %}
     </div>
+    
+    <script>
+
+        //share button
+document.getElementById('shareBtn').addEventListener('click', () => {
+    const shareText = `Heart Failure Prediction Result for {{ name }}:\n` +
+                      `Prediction: {{ 'At Risk' if prediction == 1 else 'Not At Risk' }}\n` +
+                      `Please consult a medical professional if necessary.`;
+
+    if (navigator.share) {
+        navigator.share({
+            title: 'Heart Failure Prediction Result',
+            text: shareText,
+        }).catch(console.error);
+    } else {
+        // fallback for browsers without native share API
+        navigator.clipboard.writeText(shareText).then(() => {
+            alert('Result copied to clipboard!');
+        });
+    }
+});
+
+//download
+
+document.getElementById('downloadPdfBtn').addEventListener('click', () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text(`Heart Failure Prediction Result for {{ name }}`, 10, 20);
+
+    const predictionText = `Prediction: {{ 'At Risk' if prediction == 1 else 'Not At Risk' }}`;
+    doc.setFontSize(14);
+    doc.text(predictionText, 10, 40);
+
+    const details = `Details Entered:\n` + 
+      `{% for key, value in user_data.items() %}` +
+      `{{ label_map[key] if key in label_map else key }}: {{ value }}\n` +
+      `{% endfor %}`;
+
+    doc.setFontSize(12);
+    doc.text(details, 10, 60);
+
+    doc.save('HeartFailurePredictionResult.pdf');
+});
+
+//details
+const toggleBtn = document.getElementById('toggleDetailsBtn');
+const details = document.getElementById('detailsTable');
+
+toggleBtn.addEventListener('click', () => {
+    if (details.style.display === 'none') {
+        details.style.display = 'block';
+        toggleBtn.textContent = 'Hide Details';
+    } else {
+        details.style.display = 'none';
+        toggleBtn.textContent = 'Show Details';
+    }
+});
+
+
+</script>
+
 </body>
 </html>
