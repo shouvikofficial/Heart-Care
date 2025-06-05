@@ -1,219 +1,240 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heart Failure Predictor</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Heart Failure Predictor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+  <style>
+    #analyzing-page {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: white;
+      z-index: 9999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      font-size: 1.2rem;
+      font-weight: 500;
+    }
+
+    .loader {
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid #3498db;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 
 <body>
-    <!-- Main Content -->
-    <div id="main-content">
-        <div class="container">
-            <h1>Heart Failure Risk Prediction</h1>
-            <div class="illustration">
-                <img src="https://cdn-icons-png.flaticon.com/512/4694/4694753.png" alt="Heart Icon" />
-            </div>
+  <!-- Main Content -->
+  <div id="main-content">
+    <div class="container">
+      <h1>Heart Failure Risk Prediction</h1>
+      <div class="illustration">
+        <img src="https://cdn-icons-png.flaticon.com/512/4694/4694753.png" alt="Heart Icon"/>
+      </div>
 
-            <div class="instructions-container">
-    <button id="toggle-instructions" aria-expanded="true" aria-controls="instructions" class="toggle-btn">
-    Instructions <span class="arrow">&#9650;</span>
-</button>
-    <div class="instructions" id="instructions">
-        <h2>Instructions</h2>
-        <ul>
+      <div id="instruction" class="instructions-container">
+        <button id="toggle-instructions" aria-expanded="true" aria-controls="instructions" class="toggle-btn">
+          Instructions <span class="arrow">&#9650;</span>
+        </button>
+        <div class="instructions" id="instructions">
+          <h2>Instructions</h2>
+          <ul>
             <li>Fill out all fields carefully.</li>
             <li>Make sure your data is accurate for best results.</li>
             <li>Click Predict to analyze your heart failure risk.</li>
-        </ul>
-    </div>
-</div>
-
-
-            <form method="POST" action="/predict" onsubmit="return handleFormSubmit(event)">
-
-                <label>Your Name</label>
-                <input type="text" name="name" required>
-
-                <label>Email Address</label>
-                <input type="email" name="email" required>
-
-                <label>Age</label>
-                <input type="number" name="age" id="age" required min="1" max="120">
-                <small class="error-msg" id="error-age">Age must be between 1 and 120</small>
-
-                <label>Sex</label>
-                <select name="sex" required>
-                    <option value="0">Female</option>
-                    <option value="1">Male</option>
-                </select>
-
-                <label>Smoker</label>
-                <select name="Smkr" required>
-                    <option value="0">No</option>
-                    <option value="1">Yes</option>
-                </select>
-
-                <label>Oldpeak</label>
-                <input type="number" step="any" name="oldpeak" required min="0" max="100">
-
-                <label>Fasting Blood Sugar</label>
-                <select name="fbs" required>
-                    <option value="0">No</option>
-                    <option value="1">Yes</option>
-                </select>
-
-                <label>Chest Pain Type</label>
-                <select name="cp" required>
-                    <option value="0">Typical Angina</option>
-                    <option value="1">Atypical Angina</option>
-                    <option value="2">Non-anginal Pain</option>
-                    <option value="3">Asymptomatic</option>
-                </select>
-
-                <label>Resting ECG</label>
-                <select name="restecg" required>
-                    <option value="0">Normal</option>
-                    <option value="1">ST-T Abnormality</option>
-                    <option value="2">LV Hypertrophy</option>
-                </select>
-
-                <label>Exercise Induced Angina</label>
-                <select name="exang" required>
-                    <option value="0">No</option>
-                    <option value="1">Yes</option>
-                </select>
-
-                <label>Cholesterol</label>
-                <input type="number" name="chol" id="chol" required min="50" max="600">
-                <small class="error-msg" id="error-chol">Cholesterol must be 50–600</small>
-
-                <label>Resting Blood Pressure</label>
-                <input type="number" name="trestbps" id="trestbps" step="any" required min="60" max="200">
-                <small class="error-msg" id="error-trestbps">BP must be 60–200</small>
-
-                <label>Diastolic BP</label>
-                <input type="number" name="diaBP" required>
-
-                <label>BMI</label>
-                <input type="number" step="any" name="BMI" id="BMI" required min="10" max="60">
-                <small class="error-msg" id="error-BMI">BMI must be 10–60</small>
-
-                <label>Heart Rate</label>
-                <input type="number" name="heartRate" id="heartRate" required min="30" max="250">
-                <small class="error-msg" id="error-heartRate">Heart Rate must be 30–250</small>
-
-                <label>Glucose</label>
-                <input type="number" name="glucose" id="glucose" required min="40" max="300">
-                <small class="error-msg" id="error-glucose">Glucose must be 40–300</small>
-
-                <button type="submit">Predict</button>
-            </form>
-            <div id="loading" style="display: none; text-align: center; margin-top: 20px;">
-    <div class="spinner"></div>
-    <p>Analyzing your data, please wait...</p>
-</div>
+          </ul>
         </div>
+      </div>
+
+      <form method="POST" action="/predict" onsubmit="return handleFormSubmit(event)">
+        <label>Your Name</label>
+        <input type="text" name="name" required>
+
+        <label>Email Address</label>
+        <input type="email" name="email" required>
+
+        <label>Age</label>
+        <input type="number" name="age" id="age" required min="1" max="120">
+        <small class="error-msg" id="error-age">Age must be between 1 and 120</small>
+
+        <label>Sex</label>
+        <select name="sex" required>
+          <option value="0">Female</option>
+          <option value="1">Male</option>
+        </select>
+
+        <label>Smoker</label>
+        <select name="Smkr" required>
+          <option value="0">No</option>
+          <option value="1">Yes</option>
+        </select>
+
+        <label>Oldpeak</label>
+        <input type="number" step="any" name="oldpeak" required min="0" max="100">
+
+        <label>Fasting Blood Sugar</label>
+        <select name="fbs" required>
+          <option value="0">No</option>
+          <option value="1">Yes</option>
+        </select>
+
+        <label>Chest Pain Type</label>
+        <select name="cp" required>
+          <option value="0">Typical Angina</option>
+          <option value="1">Atypical Angina</option>
+          <option value="2">Non-anginal Pain</option>
+          <option value="3">Asymptomatic</option>
+        </select>
+
+        <label>Resting ECG</label>
+        <select name="restecg" required>
+          <option value="0">Normal</option>
+          <option value="1">ST-T Abnormality</option>
+          <option value="2">LV Hypertrophy</option>
+        </select>
+
+        <label>Exercise Induced Angina</label>
+        <select name="exang" required>
+          <option value="0">No</option>
+          <option value="1">Yes</option>
+        </select>
+
+        <label>Cholesterol</label>
+        <input type="number" name="chol" id="chol" required min="50" max="600">
+        <small class="error-msg" id="error-chol">Cholesterol must be 50–600</small>
+
+        <label>Resting Blood Pressure</label>
+        <input type="number" name="trestbps" id="trestbps" step="any" required min="60" max="200">
+        <small class="error-msg" id="error-trestbps">BP must be 60–200</small>
+
+        <label>Diastolic BP</label>
+        <input type="number" name="diaBP" required>
+
+        <label>BMI</label>
+        <input type="number" step="any" name="BMI" id="BMI" required min="10" max="60">
+        <small class="error-msg" id="error-BMI">BMI must be 10–60</small>
+
+        <label>Heart Rate</label>
+        <input type="number" name="heartRate" id="heartRate" required min="30" max="250">
+        <small class="error-msg" id="error-heartRate">Heart Rate must be 30–250</small>
+
+        <label>Glucose</label>
+        <input type="number" name="glucose" id="glucose" required min="40" max="300">
+        <small class="error-msg" id="error-glucose">Glucose must be 40–300</small>
+
+        <button type="submit">Predict</button>
+      </form>
     </div>
+  </div>
 
-    <!-- Scripts -->
-    <script>
+  <!-- Analyzing Screen -->
+  <div id="analyzing-page">
+    <div class="loader"></div>
+    <p>Analyzing your data, please wait...</p>
+  </div>
+  
 
-        // Real-time validation alerts
-        document.addEventListener("DOMContentLoaded", function () {
-            const fields = [
-                { id: "age", min: 1, max: 120 },
-                { id: "chol", min: 50, max: 600 },
-                { id: "glucose", min: 40, max: 300 },
-                { id: "BMI", min: 10, max: 60 },
-                { id: "heartRate", min: 30, max: 250 },
-                { id: "trestbps", min: 60, max: 200 }
-            ];
+  <script>
+    // Real-time validation alerts
+    document.addEventListener("DOMContentLoaded", function () {
+      const fields = [
+        { id: "age", min: 1, max: 120 },
+        { id: "chol", min: 50, max: 600 },
+        { id: "glucose", min: 40, max: 300 },
+        { id: "BMI", min: 10, max: 60 },
+        { id: "heartRate", min: 30, max: 250 },
+        { id: "trestbps", min: 60, max: 200 }
+      ];
 
-            fields.forEach(field => {
-                const input = document.getElementById(field.id);
-                const errorMsg = document.getElementById(`error-${field.id}`);
+      fields.forEach(field => {
+        const input = document.getElementById(field.id);
+        const errorMsg = document.getElementById(`error-${field.id}`);
 
-                input.addEventListener("input", () => {
-                    const val = parseFloat(input.value);
-                    if (isNaN(val) || val < field.min || val > field.max) {
-                        input.classList.add("shake");
-                        errorMsg.style.display = "block";
-                    } else {
-                        input.classList.remove("shake");
-                        errorMsg.style.display = "none";
-                    }
-                });
-            });
+        input.addEventListener("input", () => {
+          const val = parseFloat(input.value);
+          if (isNaN(val) || val < field.min || val > field.max) {
+            input.classList.add("shake");
+            errorMsg.style.display = "block";
+          } else {
+            input.classList.remove("shake");
+            errorMsg.style.display = "none";
+          }
         });
+      });
+    });
 
-        // Final form check before submission
-        function validateForm() {
-            const fields = [
-                { id: "age", min: 1, max: 120 },
-                { id: "chol", min: 50, max: 600 },
-                { id: "glucose", min: 40, max: 300 },
-                { id: "BMI", min: 10, max: 60 },
-                { id: "heartRate", min: 30, max: 250 },
-                { id: "trestbps", min: 60, max: 200 }
-            ];
-            let valid = true;
+    function validateForm() {
+      const fields = [
+        { id: "age", min: 1, max: 120 },
+        { id: "chol", min: 50, max: 600 },
+        { id: "glucose", min: 40, max: 300 },
+        { id: "BMI", min: 10, max: 60 },
+        { id: "heartRate", min: 30, max: 250 },
+        { id: "trestbps", min: 60, max: 200 }
+      ];
+      let valid = true;
 
-            fields.forEach(field => {
-                const input = document.getElementById(field.id);
-                const errorMsg = document.getElementById(`error-${field.id}`);
-                const val = parseFloat(input.value);
+      fields.forEach(field => {
+        const input = document.getElementById(field.id);
+        const errorMsg = document.getElementById(`error-${field.id}`);
+        const val = parseFloat(input.value);
 
-                if (isNaN(val) || val < field.min || val > field.max) {
-                    errorMsg.style.display = "block";
-                    input.classList.add("shake");
-                    valid = false;
-                } else {
-                    errorMsg.style.display = "none";
-                    input.classList.remove("shake");
-                }
-            });
-
-            return valid;
+        if (isNaN(val) || val < field.min || val > field.max) {
+          errorMsg.style.display = "block";
+          input.classList.add("shake");
+          valid = false;
+        } else {
+          errorMsg.style.display = "none";
+          input.classList.remove("shake");
         }
+      });
 
-    function handleFormSubmit(event) {
-    if (!validateForm()) {
-        return false;
+      return valid;
     }
 
-    // Show loading animation
-    document.querySelector("form").style.display = "none";
-    document.getElementById("loading").style.display = "block";
+    function handleFormSubmit(event) {
+      if (!validateForm()) {
+        event.preventDefault();
+        return false;
+      }
 
-    return true; // allow the form to submit
-}
+      // Hide everything except loader
+      document.getElementById("main-content").style.display = "none";
+      document.getElementById("analyzing-page").style.display = "flex";
 
-window.addEventListener("pageshow", function () {
-    // Show form, hide loading spinner on page load or back navigation
-    const form = document.querySelector("form");
-    const loading = document.getElementById("loading");
+      // Continue form submission
+      return true;
+    }
 
-    if (form) form.style.display = "block";
-    if (loading) loading.style.display = "none";
-});
+    window.addEventListener("pageshow", function () {
+      document.getElementById("main-content").style.display = "block";
+      document.getElementById("analyzing-page").style.display = "none";
+    });
 
+    // Toggle instruction visibility
+    const toggleBtn = document.getElementById('toggle-instructions');
+    const instructions = document.getElementById('instructions');
+    const arrow = toggleBtn.querySelector('.arrow');
 
-const toggleBtn = document.getElementById('toggle-instructions');
-const instructions = document.getElementById('instructions');
-const arrow = toggleBtn.querySelector('.arrow');
-
-toggleBtn.addEventListener('click', () => {
-    const isCollapsed = instructions.classList.toggle('collapsed');
-    toggleBtn.setAttribute('aria-expanded', !isCollapsed);
-
-    // Arrow rotation handled by CSS based on aria-expanded attribute
-});
-
-
-
-    </script>
+    toggleBtn.addEventListener('click', () => {
+      const isCollapsed = instructions.classList.toggle('collapsed');
+      toggleBtn.setAttribute('aria-expanded', !isCollapsed);
+    });
+  </script>
 </body>
 </html>
