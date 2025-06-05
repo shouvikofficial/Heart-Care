@@ -94,23 +94,106 @@ document.getElementById('downloadPdfBtn').addEventListener('click', () => {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
+    const marginLeft = 15;
+    const pageWidth = 210;
+    const contentWidth = pageWidth - 2 * marginLeft;
+    let y = 20;
+
+    // 💧 Watermark (diagonal, light gray, background)
+    doc.setFontSize(40);
+    doc.setTextColor(200, 200, 200);
+    doc.setFont('helvetica', 'bold');
+    doc.text("HeartCare WebApp", 60, 180, {
+        angle: 45,
+        opacity: 0.08  // if jsPDF supports; otherwise use lighter color
+    });
+
+    // 🟦 Header section with color background
+    doc.setFillColor(44, 62, 80); // dark gray-blue
+    doc.rect(0, 0, pageWidth, 30, 'F');
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
-    doc.text(`Heart Failure Prediction Result for {{ name }}`, 10, 20);
+    doc.setTextColor(255, 255, 255); // white
+    doc.text("Heart Failure Prediction Report", marginLeft, 20);
 
-    const predictionText = `Prediction: {{ 'At Risk' if prediction == 1 else 'Not At Risk' }}`;
-    doc.setFontSize(14);
-    doc.text(predictionText, 10, 40);
+    y = 40;
 
-    const details = `Details Entered:\n` + 
-      `{% for key, value in user_data.items() %}` +
-      `{{ label_map[key] if key in label_map else key }}: {{ value }}\n` +
-      `{% endfor %}`;
-
+    // Patient name
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(12);
-    doc.text(details, 10, 60);
+    doc.setTextColor(60, 60, 60);
+    doc.text(`Name: {{ name }}`, marginLeft, y);
+    y += 8;
+    doc.text(`Email: {{ email }}`, marginLeft, y);
+    y += 12;
 
+    // 🔍 Prediction Result Box
+    const predictionText = `Prediction: {{ 'At Risk' if prediction == 1 else 'Not At Risk' }}`;
+    doc.setFontSize(13);
+    if ("{{ prediction }}" === '1') {
+        doc.setTextColor(185, 28, 28); // red
+        doc.setDrawColor(220, 53, 69);
+        doc.setFillColor(255, 228, 230); // light red background
+    } else {
+        doc.setTextColor(21, 128, 61); // green
+        doc.setDrawColor(40, 167, 69);
+        doc.setFillColor(220, 252, 231); // light green background
+    }
+    doc.setLineWidth(0.7);
+    doc.roundedRect(marginLeft, y, contentWidth, 14, 3, 3, 'FD');
+    doc.text(predictionText, marginLeft + 4, y + 10);
+    y += 25;
+
+    // 📝 User Input Details
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text("Details Entered:", marginLeft, y);
+    y += 8;
+
+    doc.setDrawColor(200, 200, 200);
+    doc.line(marginLeft, y, pageWidth - marginLeft, y);
+    y += 6;
+
+    // 📋 User data (two-column style)
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(50, 50, 50);
+
+    const details = `{% for key, value in user_data.items() %}
+{{ label_map[key] if key in label_map else key }}: {{ value }}
+{% endfor %}`.trim().split('\n');
+
+    for (let i = 0; i < details.length; i++) {
+        const line = details[i].trim();
+        const x = i % 2 === 0 ? marginLeft : pageWidth / 2 + 5;
+        doc.text(line, x, y);
+        if (i % 2 !== 0) y += 7;
+    }
+
+    y += 15;
+
+    // 📌 Summary Message
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(10);
+    doc.setTextColor(90, 90, 90);
+    if ("{{ prediction }}" === '1') {
+        doc.text("Note: Based on the input, there's a higher risk of heart failure. Please consult a doctor.", marginLeft, y);
+    } else {
+        doc.text("Note: You are not currently at risk based on the provided information. Keep maintaining your health!", marginLeft, y);
+    }
+    y += 20;
+
+    // 🔻 Footer
+    doc.setFontSize(9);
+    doc.setTextColor(130, 130, 130);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, marginLeft, 290);
+    doc.text("HeartCare WebApp | Confidential Report", pageWidth - 90, 290);
+
+    // Save PDF
     doc.save('HeartFailurePredictionResult.pdf');
 });
+
 
 //details
 const toggleBtn = document.getElementById('toggleDetailsBtn');
