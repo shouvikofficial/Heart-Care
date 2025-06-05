@@ -5,3 +5,4 @@ joblib
 openpyxl
 gunicorn
 imbalanced-learn
+xgboost
