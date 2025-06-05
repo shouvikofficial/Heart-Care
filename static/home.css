@@ -288,3 +288,76 @@ a {
     font-size: 1.5rem;
   }
 }
+
+
+/* === Developer Section === */
+.developers {
+  padding: 40px 20px;
+  background-color: #f1f5f9;
+  text-align: center;
+  margin-bottom: 40px;
+  border-radius: 16px;
+  animation: fadeIn 1s ease-in;
+}
+
+.developers h2 {
+  font-size: 2rem;
+  color: #1e3a8a;
+  margin-bottom: 25px;
+}
+
+.developer-cards {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 30px;
+}
+
+.developer-card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: 25px;
+  width: 280px;
+  transition: transform 0.3s ease;
+  text-align: center;
+}
+
+.developer-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 16px rgba(30, 58, 138, 0.1);
+}
+
+.dev-photo {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.developer-card h3 {
+  font-size: 1.2rem;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+.developer-card p {
+  font-size: 0.95rem;
+  color: #475569;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+/* === Responsive === */
+@media (max-width: 768px) {
+  .developer-cards {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .developer-card {
+    width: 90%;
+  }
+}
