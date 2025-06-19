@@ -6,3 +6,6 @@ openpyxl
 gunicorn
 imbalanced-learn
 xgboost
+matplotlib
+seaborn
+shap
