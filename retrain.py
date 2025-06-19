@@ -6,32 +6,41 @@ from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score,
-    f1_score, confusion_matrix, roc_auc_score
+    f1_score, confusion_matrix, roc_auc_score, roc_curve
 )
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
 import joblib
 import os
 import warnings
+import matplotlib.pyplot as plt
+import seaborn as sns
+import shap
 
 def retrain_model():
+    enable_outlier_removal = True
+    enable_shap = True
+    enable_roc = True
+    enable_cv = True
+
     main_file = 'MainData.xlsx'
     new_file = 'NewData.xlsx'
+
+    # Create folder for plots
+    plot_dir = "plots"
+    if not os.path.exists(plot_dir):
+        os.makedirs(plot_dir)
 
     # Load data
     main_df = pd.read_excel(main_file) if os.path.exists(main_file) else pd.DataFrame()
     new_df = pd.read_excel(new_file) if os.path.exists(new_file) else pd.DataFrame()
 
-    # Combine datasets
     combined_df = pd.concat([main_df, new_df], ignore_index=True)
-
-    # Drop rows without target
     combined_df = combined_df.dropna(subset=['target'])
 
     if combined_df.empty:
         warnings.warn("⚠️ No valid data with targets found. Retraining aborted.")
         return
 
-    # Features and target
     feature_columns = [
         "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
         "heartRate", "exang", "oldpeak", "BMI", "diaBP", "glucose", "Smkr"
@@ -41,61 +50,80 @@ def retrain_model():
         X = combined_df[feature_columns]
         y = combined_df["target"]
 
-        # Class distribution
+        # ---------------- Null Handling ----------------
+        if X.isnull().sum().sum() > 0:
+            print("⚠️ Null values found. Filling with mean...")
+            X.fillna(X.mean(numeric_only=True), inplace=True)
+
+        # ---------------- Outlier Removal ----------------
+        if enable_outlier_removal:
+            Q1 = X.quantile(0.25)
+            Q3 = X.quantile(0.75)
+            IQR = Q3 - Q1
+            outlier_summary = {}
+            for col in X.select_dtypes(include=['float64', 'int64']).columns:
+                lower = Q1[col] - 1.5 * IQR[col]
+                upper = Q3[col] + 1.5 * IQR[col]
+                outlier_summary[col] = X[(X[col] < lower) | (X[col] > upper)].shape[0]
+
+            print("🔍 Outlier count per feature (before removal):")
+            for k, v in outlier_summary.items():
+                print(f"   {k}: {v}")
+
+            mask = ~((X < (Q1 - 1.5 * IQR)) | (X > (Q3 + 1.5 * IQR))).any(axis=1)
+            outlier_count = (~mask).sum()
+            X = X[mask]
+            y = y[mask]
+            print(f"✅ Outlier removal completed using IQR. Removed {outlier_count} rows. Remaining samples: {len(X)}")
+        else:
+            print("🚫 Outlier removal skipped")
+
+        # ---------------- SMOTE ----------------
         class_counts = y.value_counts()
         if len(class_counts) < 2:
-            warnings.warn("⚠️ Only one class present in data. Retraining aborted.")
+            warnings.warn("⚠️ Only one class present. Aborting.")
             return
 
         imbalance_ratio = max(class_counts) / min(class_counts)
-
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
         if imbalance_ratio >= 2.1:
-            print(f"⚠️ Imbalance ratio = {imbalance_ratio:.2f}, applying SMOTE...")
+            print(f"⚠️ Imbalance ratio = {imbalance_ratio:.2f}. Applying SMOTE...")
             sm = SMOTE()
             X_scaled, y = sm.fit_resample(X_scaled, y)
         else:
-            print(f"✅ Imbalance ratio = {imbalance_ratio:.2f}, no SMOTE applied.")
+            print(f"✅ Imbalance ratio = {imbalance_ratio:.2f}. No SMOTE applied.")
 
-        # Split for evaluation
+        # ---------------- Split ----------------
         X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
-        # Initialize models
         models = {
             "LogisticRegression": LogisticRegression(max_iter=1000, random_state=42),
             "RandomForest": RandomForestClassifier(random_state=42),
-            "XGBoost": XGBClassifier(eval_metric='logloss', random_state=42),
+            "XGBoost": XGBClassifier(eval_metric='logloss', random_state=42)
         }
 
         results = []
 
-        # Train and evaluate each model
+        # ---------------- Train Models ----------------
         for name, model in models.items():
             model.fit(X_train, y_train)
             y_pred = model.predict(X_test)
             y_proba = model.predict_proba(X_test)[:, 1]
 
-            acc = accuracy_score(y_test, y_pred)
-            prec = precision_score(y_test, y_pred, zero_division=0)
-            rec = recall_score(y_test, y_pred, zero_division=0)
-            f1 = f1_score(y_test, y_pred, zero_division=0)
-            roc_auc = roc_auc_score(y_test, y_proba)
-            cm = confusion_matrix(y_test, y_pred)
-
             results.append({
                 "Model": name,
-                "Accuracy": acc,
-                "Precision": prec,
-                "Recall": rec,
-                "F1 Score": f1,
-                "ROC AUC": roc_auc,
-                "Confusion Matrix": cm,
+                "Accuracy": accuracy_score(y_test, y_pred),
+                "Precision": precision_score(y_test, y_pred, zero_division=0),
+                "Recall": recall_score(y_test, y_pred, zero_division=0),
+                "F1 Score": f1_score(y_test, y_pred, zero_division=0),
+                "ROC AUC": roc_auc_score(y_test, y_proba),
+                "Confusion Matrix": confusion_matrix(y_test, y_pred),
                 "Model Object": model
             })
 
-        # Print comparison table
+        # ---------------- Print Summary ----------------
         print("\nModel Performance Comparison:")
         print(f"{'Model':<18} {'Accuracy':<9} {'Precision':<10} {'Recall':<8} {'F1 Score':<9} {'ROC AUC':<8}")
         for r in results:
@@ -104,22 +132,79 @@ def retrain_model():
             print(r["Confusion Matrix"])
             print()
 
-        # Select best model by F1 Score
+        # ---------------- Best Model ----------------
         best_result = max(results, key=lambda x: x['F1 Score'])
-        best_model = best_result['Model Object']
-        best_model_name = best_result['Model']
+        best_model = best_result["Model Object"]
+        best_model_name = best_result["Model"]
+        print(f"✅ Best model: {best_model_name} (F1 Score: {best_result['F1 Score']:.4f})")
 
-        print(f"✅ Best model based on F1 Score: {best_model_name} with F1 Score = {best_result['F1 Score']:.4f}")
+        # ---------------- SHAP ----------------
+        if enable_shap:
+            try:
+                if best_model_name == "LogisticRegression":
+                    explainer = shap.Explainer(best_model.predict, X_train)
+                else:
+                    explainer = shap.Explainer(best_model, X_train)
+                shap_values = explainer(X_test[:100])
+                shap.summary_plot(shap_values, X_test[:100], show=False)
+                plt.tight_layout()
+                plt.savefig(os.path.join(plot_dir, "shap_summary.png"))
+                plt.close()
+                print("✅ SHAP summary plot saved as plots/shap_summary.png")
+            except Exception as e:
+                print(f"⚠️ SHAP failed: {e}")
 
-        # Save best model and scaler
+        # ---------------- Confusion Matrix Heatmap ----------------
+        try:
+            plt.figure(figsize=(5, 4))
+            sns.heatmap(confusion_matrix(y_test, best_model.predict(X_test)), annot=True, fmt='d', cmap='Blues')
+            plt.title(f'Confusion Matrix ({best_model_name})')
+            plt.xlabel('Predicted')
+            plt.ylabel('Actual')
+            plt.tight_layout()
+            plt.savefig(os.path.join(plot_dir, "confusion_matrix.png"))
+            plt.close()
+            print("✅ Confusion matrix heatmap saved as plots/confusion_matrix.png.")
+        except Exception as e:
+            print(f"⚠️ Heatmap failed: {e}")
+
+        # ---------------- ROC Curve ----------------
+        if enable_roc:
+            try:
+                y_score = best_model.predict_proba(X_test)[:, 1]
+                fpr, tpr, thresholds = roc_curve(y_test, y_score)
+                plt.figure()
+                plt.plot(fpr, tpr, label=f'{best_model_name} (AUC = {roc_auc_score(y_test, y_score):.2f})')
+                plt.plot([0, 1], [0, 1], 'k--')
+                plt.xlabel('False Positive Rate')
+                plt.ylabel('True Positive Rate')
+                plt.title('ROC Curve')
+                plt.legend()
+                plt.tight_layout()
+                plt.savefig(os.path.join(plot_dir, "roc_curve.png"))
+                plt.close()
+                print("✅ ROC curve saved as plots/roc_curve.png.")
+            except Exception as e:
+                print(f"⚠️ ROC curve failed: {e}")
+
+        # ---------------- Cross Validation ----------------
+        if enable_cv:
+            try:
+                scores = cross_val_score(best_model, X_scaled, y, cv=5, scoring='f1')
+                print(f"✅ Cross-validation F1 scores: {scores}")
+                print(f"✅ Mean F1 Score: {scores.mean():.4f}")
+            except Exception as e:
+                print(f"⚠️ Cross-validation failed: {e}")
+
+        # Save best model
         joblib.dump(best_model, 'best_model.pkl')
         joblib.dump(scaler, 'scaler.pkl')
-        print(f"✅ Saved best model to 'best_model.pkl' and scaler to 'scaler.pkl'")
+        print("✅ Model and scaler saved.")
 
-        # Merge and save data
+        # Save combined data
         combined_df.to_excel(main_file, index=False)
         pd.DataFrame(columns=feature_columns + ['target']).to_excel(new_file, index=False)
-        print("✅ New data merged into MainData.xlsx and cleared from NewData.xlsx.")
+        print("✅ Data merged and new data cleared.")
 
     except Exception as e:
         warnings.warn(f"❌ Error during retraining: {e}")
