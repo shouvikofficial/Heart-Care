@@ -9,3 +9,7 @@ xgboost
 matplotlib
 seaborn
 shap
+numpy
+scipy
+threadpoolctl
+tqdm

@@ -63,6 +63,8 @@ def predict():
     new_row = input_df.copy()
     new_row["target"] = prediction
 
+    images = {}
+
     try:
         if os.path.exists(MAIN_FILE):
             main_df = pd.read_excel(MAIN_FILE)
@@ -85,7 +87,7 @@ def predict():
             else:
                 updated = new_row
             updated.to_excel(DATA_FILE, index=False)
-            retrain_model()
+            images = retrain_model()
 
     except Exception as e:
         print(f"❌ Error saving or processing data: {e}")
@@ -128,7 +130,8 @@ def predict():
         email=email,
         user_data=display_data,
         overall_result=overall_result,
-        prediction=prediction
+        prediction=prediction,
+        images=images
     )
 
 

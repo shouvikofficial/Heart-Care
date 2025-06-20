@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Prediction Result</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='result.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='result.css') }}" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 </head>
 <body>
     <div class="container">
@@ -16,42 +15,39 @@
         <h2>Details Entered by You:</h2>
 
         <button id="toggleDetailsBtn">Show Details</button>
-<div id="detailsTable" style="display:none;">
-     <table>
-    {% set label_map = {
-        "age": "Age",
-        "sex": "Gender",
-        "cp": "Chest Pain Type",
-        "trestbps": "Resting Blood Pressure (mmHg)",
-        "chol": "Cholesterol Level (mg/dL)",
-        "fbs": "Fasting Blood Sugar > 120 mg/dL",
-        "restecg": "Resting ECG Result",
-        "heartRate": "Max Heart Rate Achieved",
-        "exang": "Exercise Induced Angina",
-        "oldpeak": "Oldpeak (ST Depression)",
-        "BMI": "Body Mass Index (BMI)",
-        "diaBP": "Diastolic Blood Pressure",
-        "glucose": "Glucose Level (mg/dL)",
-        "Smkr": "Smoker"
-    } %}
+        <div id="detailsTable" style="display:none;">
+            <table>
+                {% set label_map = {
+                    "age": "Age",
+                    "sex": "Gender",
+                    "cp": "Chest Pain Type",
+                    "trestbps": "Resting Blood Pressure (mmHg)",
+                    "chol": "Cholesterol Level (mg/dL)",
+                    "fbs": "Fasting Blood Sugar > 120 mg/dL",
+                    "restecg": "Resting ECG Result",
+                    "heartRate": "Max Heart Rate Achieved",
+                    "exang": "Exercise Induced Angina",
+                    "oldpeak": "Oldpeak (ST Depression)",
+                    "BMI": "Body Mass Index (BMI)",
+                    "diaBP": "Diastolic Blood Pressure",
+                    "glucose": "Glucose Level (mg/dL)",
+                    "Smkr": "Smoker"
+                } %}
+                {% for key, value in user_data.items() %}
+                <tr>
+                    <td>{{ label_map[key] if key in label_map else key }}</td>
+                    <td>{{ value }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
 
-    {% for key, value in user_data.items() %}
-    <tr>
-        <td>{{ label_map[key] if key in label_map else key }}</td>
-        <td>{{ value }}</td>
-    </tr>
-    {% endfor %}
-</table>
-</div>
-        
         {% if prediction is not none %}
         <div class="result">
             <h2>Prediction: <span class="{{ 'risk' if prediction == 1 else 'safe' }}">{{ 'At Risk' if prediction == 1 else 'Not At Risk' }}</span></h2>
 
             <button id="shareBtn">Share Your Result</button>
             <button id="downloadPdfBtn">Download Result as PDF</button>
-
-
 
             <!-- Graph Analysis -->
             <div class="analysis-section">
@@ -65,152 +61,194 @@
             </div>
         </div>
         {% endif %}
+
+        {% if images %}
+        <div id="imagesContainer" class="plot-container" style="display:none;">
+            {% if images.shap %}
+            <h3>SHAP Summary Plot</h3>
+            <img src="data:image/png;base64,{{ images.shap }}" alt="SHAP Summary Plot" />
+            {% endif %}
+            {% if images.confusion_matrix %}
+            <h3>Confusion Matrix</h3>
+            <img src="data:image/png;base64,{{ images.confusion_matrix }}" alt="Confusion Matrix" />
+            {% endif %}
+            {% if images.roc_curve %}
+            <h3>ROC Curve</h3>
+            <img src="data:image/png;base64,{{ images.roc_curve }}" alt="ROC Curve" />
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Admin button and password input inside container -->
+        <button id="adminShowImagesBtn" style="margin-top: 20px;">Administrator Access: View Analysis Images</button>
+
+        <div id="adminPasswordSection" style="display:none; margin-top: 10px;">
+            <input type="password" id="adminPasswordInput" placeholder="Enter Admin Password" />
+            <button id="adminPasswordSubmitBtn">Submit</button>
+            <p id="wrongPassMsg" style="color: red; display:none;">Incorrect password. Try again.</p>
+        </div>
     </div>
-    
+
     <script>
+        // Share button
+        document.getElementById('shareBtn').addEventListener('click', () => {
+            const shareText = `Heart Failure Prediction Result for {{ name }}:\n` +
+                `Prediction: {{ 'At Risk' if prediction == 1 else 'Not At Risk' }}\n` +
+                `Please consult a medical professional if necessary.`;
 
-        //share button
-document.getElementById('shareBtn').addEventListener('click', () => {
-    const shareText = `Heart Failure Prediction Result for {{ name }}:\n` +
-                      `Prediction: {{ 'At Risk' if prediction == 1 else 'Not At Risk' }}\n` +
-                      `Please consult a medical professional if necessary.`;
-
-    if (navigator.share) {
-        navigator.share({
-            title: 'Heart Failure Prediction Result',
-            text: shareText,
-        }).catch(console.error);
-    } else {
-        // fallback for browsers without native share API
-        navigator.clipboard.writeText(shareText).then(() => {
-            alert('Result copied to clipboard!');
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Heart Failure Prediction Result',
+                    text: shareText,
+                }).catch(console.error);
+            } else {
+                navigator.clipboard.writeText(shareText).then(() => {
+                    alert('Result copied to clipboard!');
+                });
+            }
         });
-    }
-});
 
-//download
+        // Download PDF
+        document.getElementById('downloadPdfBtn').addEventListener('click', () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
 
-document.getElementById('downloadPdfBtn').addEventListener('click', () => {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+            const marginLeft = 15;
+            const pageWidth = 210;
+            const contentWidth = pageWidth - 2 * marginLeft;
+            let y = 20;
 
-    const marginLeft = 15;
-    const pageWidth = 210;
-    const contentWidth = pageWidth - 2 * marginLeft;
-    let y = 20;
+            // Watermark
+            doc.setFontSize(40);
+            doc.setTextColor(200, 200, 200);
+            doc.setFont('helvetica', 'bold');
+            doc.text("HeartCare WebApp", 60, 180, {
+                angle: 45,
+                opacity: 0.08
+            });
 
-    // 💧 Watermark (diagonal, light gray, background)
-    doc.setFontSize(40);
-    doc.setTextColor(200, 200, 200);
-    doc.setFont('helvetica', 'bold');
-    doc.text("HeartCare WebApp", 60, 180, {
-        angle: 45,
-        opacity: 0.08  // if jsPDF supports; otherwise use lighter color
-    });
+            // Header
+            doc.setFillColor(44, 62, 80);
+            doc.rect(0, 0, pageWidth, 30, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(16);
+            doc.setTextColor(255, 255, 255);
+            doc.text("Heart Failure Prediction Report", marginLeft, 20);
 
-    // 🟦 Header section with color background
-    doc.setFillColor(44, 62, 80); // dark gray-blue
-    doc.rect(0, 0, pageWidth, 30, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(255, 255, 255); // white
-    doc.text("Heart Failure Prediction Report", marginLeft, 20);
+            y = 40;
 
-    y = 40;
+            // Patient name & email
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(12);
+            doc.setTextColor(60, 60, 60);
+            doc.text(`Name: {{ name }}`, marginLeft, y);
+            y += 8;
+            doc.text(`Email: {{ email }}`, marginLeft, y);
+            y += 12;
 
-    // Patient name
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(12);
-    doc.setTextColor(60, 60, 60);
-    doc.text(`Name: {{ name }}`, marginLeft, y);
-    y += 8;
-    doc.text(`Email: {{ email }}`, marginLeft, y);
-    y += 12;
+            // Prediction result box
+            const predictionText = `Prediction: {{ 'At Risk' if prediction == 1 else 'Not At Risk' }}`;
+            doc.setFontSize(13);
+            if ("{{ prediction }}" === '1') {
+                doc.setTextColor(185, 28, 28);
+                doc.setDrawColor(220, 53, 69);
+                doc.setFillColor(255, 228, 230);
+            } else {
+                doc.setTextColor(21, 128, 61);
+                doc.setDrawColor(40, 167, 69);
+                doc.setFillColor(220, 252, 231);
+            }
+            doc.setLineWidth(0.7);
+            doc.roundedRect(marginLeft, y, contentWidth, 14, 3, 3, 'FD');
+            doc.text(predictionText, marginLeft + 4, y + 10);
+            y += 25;
 
-    // 🔍 Prediction Result Box
-    const predictionText = `Prediction: {{ 'At Risk' if prediction == 1 else 'Not At Risk' }}`;
-    doc.setFontSize(13);
-    if ("{{ prediction }}" === '1') {
-        doc.setTextColor(185, 28, 28); // red
-        doc.setDrawColor(220, 53, 69);
-        doc.setFillColor(255, 228, 230); // light red background
-    } else {
-        doc.setTextColor(21, 128, 61); // green
-        doc.setDrawColor(40, 167, 69);
-        doc.setFillColor(220, 252, 231); // light green background
-    }
-    doc.setLineWidth(0.7);
-    doc.roundedRect(marginLeft, y, contentWidth, 14, 3, 3, 'FD');
-    doc.text(predictionText, marginLeft + 4, y + 10);
-    y += 25;
+            // User Input Details
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(0, 0, 0);
+            doc.text("Details Entered:", marginLeft, y);
+            y += 8;
 
-    // 📝 User Input Details
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text("Details Entered:", marginLeft, y);
-    y += 8;
+            doc.setDrawColor(200, 200, 200);
+            doc.line(marginLeft, y, pageWidth - marginLeft, y);
+            y += 6;
 
-    doc.setDrawColor(200, 200, 200);
-    doc.line(marginLeft, y, pageWidth - marginLeft, y);
-    y += 6;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(11);
+            doc.setTextColor(50, 50, 50);
 
-    // 📋 User data (two-column style)
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-    doc.setTextColor(50, 50, 50);
-
-    const details = `{% for key, value in user_data.items() %}
+            const details = `{% for key, value in user_data.items() %}
 {{ label_map[key] if key in label_map else key }}: {{ value }}
 {% endfor %}`.trim().split('\n');
 
-    for (let i = 0; i < details.length; i++) {
-        const line = details[i].trim();
-        const x = i % 2 === 0 ? marginLeft : pageWidth / 2 + 5;
-        doc.text(line, x, y);
-        if (i % 2 !== 0) y += 7;
-    }
+            for (let i = 0; i < details.length; i++) {
+                const line = details[i].trim();
+                const x = i % 2 === 0 ? marginLeft : pageWidth / 2 + 5;
+                doc.text(line, x, y);
+                if (i % 2 !== 0) y += 7;
+            }
 
-    y += 15;
+            y += 15;
 
-    // 📌 Summary Message
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(10);
-    doc.setTextColor(90, 90, 90);
-    if ("{{ prediction }}" === '1') {
-        doc.text("Note: Based on the input, there's a higher risk of heart failure. Please consult a doctor.", marginLeft, y);
-    } else {
-        doc.text("Note: You are not currently at risk based on the provided information. Keep maintaining your health!", marginLeft, y);
-    }
-    y += 20;
+            // Summary Message
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(10);
+            doc.setTextColor(90, 90, 90);
+            if ("{{ prediction }}" === '1') {
+                doc.text("Note: Based on the input, there's a higher risk of heart failure. Please consult a doctor.", marginLeft, y);
+            } else {
+                doc.text("Note: You are not currently at risk based on the provided information. Keep maintaining your health!", marginLeft, y);
+            }
+            y += 20;
 
-    // 🔻 Footer
-    doc.setFontSize(9);
-    doc.setTextColor(130, 130, 130);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, marginLeft, 290);
-    doc.text("HeartCare WebApp | Confidential Report", pageWidth - 90, 290);
+            // Footer
+            doc.setFontSize(9);
+            doc.setTextColor(130, 130, 130);
+            doc.text(`Generated on: ${new Date().toLocaleString()}`, marginLeft, 290);
+            doc.text("HeartCare WebApp | Confidential Report", pageWidth - 90, 290);
 
-    // Save PDF
-    doc.save('HeartFailurePredictionResult.pdf');
-});
+            doc.save('HeartFailurePredictionResult.pdf');
+        });
 
+        // Details toggle
+        const toggleBtn = document.getElementById('toggleDetailsBtn');
+        const details = document.getElementById('detailsTable');
 
-//details
-const toggleBtn = document.getElementById('toggleDetailsBtn');
-const details = document.getElementById('detailsTable');
+        toggleBtn.addEventListener('click', () => {
+            if (details.style.display === 'none') {
+                details.style.display = 'block';
+                toggleBtn.textContent = 'Hide Details';
+            } else {
+                details.style.display = 'none';
+                toggleBtn.textContent = 'Show Details';
+            }
+        });
 
-toggleBtn.addEventListener('click', () => {
-    if (details.style.display === 'none') {
-        details.style.display = 'block';
-        toggleBtn.textContent = 'Hide Details';
-    } else {
-        details.style.display = 'none';
-        toggleBtn.textContent = 'Show Details';
-    }
-});
+        // Admin Show Images & Password logic
+        const adminShowImagesBtn = document.getElementById('adminShowImagesBtn');
+        const adminPasswordSection = document.getElementById('adminPasswordSection');
+        const adminPasswordInput = document.getElementById('adminPasswordInput');
+        const adminPasswordSubmitBtn = document.getElementById('adminPasswordSubmitBtn');
+        const wrongPassMsg = document.getElementById('wrongPassMsg');
+        const imagesContainer = document.getElementById('imagesContainer');
 
+        adminShowImagesBtn.addEventListener('click', () => {
+            adminPasswordSection.style.display = 'block';
+            adminShowImagesBtn.style.display = 'none';
+            wrongPassMsg.style.display = 'none';
+        });
 
-</script>
-
+        adminPasswordSubmitBtn.addEventListener('click', () => {
+            const correctPassword = "admin123"; // Set your password here
+            if (adminPasswordInput.value === correctPassword) {
+                imagesContainer.style.display = 'block';
+                adminPasswordSection.style.display = 'none';
+            } else {
+                wrongPassMsg.style.display = 'block';
+            }
+            adminPasswordInput.value = '';
+        });
+    </script>
 </body>
 </html>

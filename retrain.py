@@ -12,9 +12,13 @@ from sklearn.model_selection import train_test_split, cross_val_score
 import joblib
 import os
 import warnings
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 import shap
+import io
+import base64
 
 def retrain_model():
     enable_outlier_removal = True
@@ -25,28 +29,35 @@ def retrain_model():
     main_file = 'MainData.xlsx'
     new_file = 'NewData.xlsx'
 
-    # Create folder for plots
+    # Create folder for plots - keep this (even if we won't save files)
     plot_dir = "plots"
     if not os.path.exists(plot_dir):
         os.makedirs(plot_dir)
 
-    # Load data
-    main_df = pd.read_excel(main_file) if os.path.exists(main_file) else pd.DataFrame()
-    new_df = pd.read_excel(new_file) if os.path.exists(new_file) else pd.DataFrame()
-
-    combined_df = pd.concat([main_df, new_df], ignore_index=True)
-    combined_df = combined_df.dropna(subset=['target'])
-
-    if combined_df.empty:
-        warnings.warn("⚠️ No valid data with targets found. Retraining aborted.")
-        return
-
-    feature_columns = [
-        "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
-        "heartRate", "exang", "oldpeak", "BMI", "diaBP", "glucose", "Smkr"
-    ]
+    # Function to convert current plot to base64 string
+    def plot_to_base64():
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight')
+        plt.close()
+        buf.seek(0)
+        return base64.b64encode(buf.read()).decode('utf-8')
 
     try:
+        main_df = pd.read_excel(main_file) if os.path.exists(main_file) else pd.DataFrame()
+        new_df = pd.read_excel(new_file) if os.path.exists(new_file) else pd.DataFrame()
+
+        combined_df = pd.concat([main_df, new_df], ignore_index=True)
+        combined_df = combined_df.dropna(subset=['target'])
+
+        if combined_df.empty:
+            warnings.warn("⚠️ No valid data with targets found. Retraining aborted.")
+            return {}
+
+        feature_columns = [
+            "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
+            "heartRate", "exang", "oldpeak", "BMI", "diaBP", "glucose", "Smkr"
+        ]
+
         X = combined_df[feature_columns]
         y = combined_df["target"]
 
@@ -82,7 +93,7 @@ def retrain_model():
         class_counts = y.value_counts()
         if len(class_counts) < 2:
             warnings.warn("⚠️ Only one class present. Aborting.")
-            return
+            return {}
 
         imbalance_ratio = max(class_counts) / min(class_counts)
         scaler = StandardScaler()
@@ -138,19 +149,20 @@ def retrain_model():
         best_model_name = best_result["Model"]
         print(f"✅ Best model: {best_model_name} (F1 Score: {best_result['F1 Score']:.4f})")
 
+        images = {}
+
         # ---------------- SHAP ----------------
         if enable_shap:
             try:
+                plt.figure(figsize=(8,6))  # <-- Add this line so SHAP plot renders correctly
                 if best_model_name == "LogisticRegression":
                     explainer = shap.Explainer(best_model.predict, X_train)
                 else:
                     explainer = shap.Explainer(best_model, X_train)
                 shap_values = explainer(X_test[:100])
                 shap.summary_plot(shap_values, X_test[:100], show=False)
-                plt.tight_layout()
-                plt.savefig(os.path.join(plot_dir, "shap_summary.png"))
-                plt.close()
-                print("✅ SHAP summary plot saved as plots/shap_summary.png")
+                images['shap'] = plot_to_base64()  # <-- Key 'shap' (was 'shap_summary') to match your template
+                print("✅ SHAP summary plot created.")
             except Exception as e:
                 print(f"⚠️ SHAP failed: {e}")
 
@@ -162,9 +174,8 @@ def retrain_model():
             plt.xlabel('Predicted')
             plt.ylabel('Actual')
             plt.tight_layout()
-            plt.savefig(os.path.join(plot_dir, "confusion_matrix.png"))
-            plt.close()
-            print("✅ Confusion matrix heatmap saved as plots/confusion_matrix.png.")
+            images['confusion_matrix'] = plot_to_base64()
+            print("✅ Confusion matrix heatmap created.")
         except Exception as e:
             print(f"⚠️ Heatmap failed: {e}")
 
@@ -181,9 +192,8 @@ def retrain_model():
                 plt.title('ROC Curve')
                 plt.legend()
                 plt.tight_layout()
-                plt.savefig(os.path.join(plot_dir, "roc_curve.png"))
-                plt.close()
-                print("✅ ROC curve saved as plots/roc_curve.png.")
+                images['roc_curve'] = plot_to_base64()
+                print("✅ ROC curve created.")
             except Exception as e:
                 print(f"⚠️ ROC curve failed: {e}")
 
@@ -196,15 +206,18 @@ def retrain_model():
             except Exception as e:
                 print(f"⚠️ Cross-validation failed: {e}")
 
-        # Save best model
+        # Save best model and scaler
         joblib.dump(best_model, 'best_model.pkl')
         joblib.dump(scaler, 'scaler.pkl')
         print("✅ Model and scaler saved.")
 
-        # Save combined data
+        # Save combined data and clear new data file
         combined_df.to_excel(main_file, index=False)
         pd.DataFrame(columns=feature_columns + ['target']).to_excel(new_file, index=False)
         print("✅ Data merged and new data cleared.")
 
+        return images
+
     except Exception as e:
         warnings.warn(f"❌ Error during retraining: {e}")
+        return {}
