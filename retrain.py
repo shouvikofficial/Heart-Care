@@ -12,10 +12,14 @@ from sklearn.model_selection import train_test_split, cross_val_score
 import joblib
 import os
 import warnings
-
+import matplotlib.pyplot as plt
+import seaborn as sns
+import shap
 
 def retrain_model():
     enable_outlier_removal = True
+    enable_shap = True
+    enable_roc = True
     enable_cv = True
 
     main_file = 'MainData.xlsx'
@@ -133,6 +137,55 @@ def retrain_model():
         best_model = best_result["Model Object"]
         best_model_name = best_result["Model"]
         print(f"✅ Best model: {best_model_name} (F1 Score: {best_result['F1 Score']:.4f})")
+
+        # ---------------- SHAP ----------------
+        if enable_shap:
+            try:
+                if best_model_name == "LogisticRegression":
+                    explainer = shap.Explainer(best_model.predict, X_train)
+                else:
+                    explainer = shap.Explainer(best_model, X_train)
+                shap_values = explainer(X_test[:100])
+                shap.summary_plot(shap_values, X_test[:100], show=False)
+                plt.tight_layout()
+                plt.savefig(os.path.join(plot_dir, "shap_summary.png"))
+                plt.close()
+                print("✅ SHAP summary plot saved as plots/shap_summary.png")
+            except Exception as e:
+                print(f"⚠️ SHAP failed: {e}")
+
+        # ---------------- Confusion Matrix Heatmap ----------------
+        try:
+            plt.figure(figsize=(5, 4))
+            sns.heatmap(confusion_matrix(y_test, best_model.predict(X_test)), annot=True, fmt='d', cmap='Blues')
+            plt.title(f'Confusion Matrix ({best_model_name})')
+            plt.xlabel('Predicted')
+            plt.ylabel('Actual')
+            plt.tight_layout()
+            plt.savefig(os.path.join(plot_dir, "confusion_matrix.png"))
+            plt.close()
+            print("✅ Confusion matrix heatmap saved as plots/confusion_matrix.png.")
+        except Exception as e:
+            print(f"⚠️ Heatmap failed: {e}")
+
+        # ---------------- ROC Curve ----------------
+        if enable_roc:
+            try:
+                y_score = best_model.predict_proba(X_test)[:, 1]
+                fpr, tpr, thresholds = roc_curve(y_test, y_score)
+                plt.figure()
+                plt.plot(fpr, tpr, label=f'{best_model_name} (AUC = {roc_auc_score(y_test, y_score):.2f})')
+                plt.plot([0, 1], [0, 1], 'k--')
+                plt.xlabel('False Positive Rate')
+                plt.ylabel('True Positive Rate')
+                plt.title('ROC Curve')
+                plt.legend()
+                plt.tight_layout()
+                plt.savefig(os.path.join(plot_dir, "roc_curve.png"))
+                plt.close()
+                print("✅ ROC curve saved as plots/roc_curve.png.")
+            except Exception as e:
+                print(f"⚠️ ROC curve failed: {e}")
 
         # ---------------- Cross Validation ----------------
         if enable_cv:
