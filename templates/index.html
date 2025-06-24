@@ -85,7 +85,8 @@
         </select>
 
         <label>Oldpeak</label>
-        <input type="number" step="any" name="oldpeak" required min="0" max="100">
+        <input type="number" step="any" name="oldpeak" id="oldpeak" required min="0" max="100">
+        <small class="error-msg" id="error-oldpeak">Oldpeak must be 0–100</small>
 
         <label>Fasting Blood Sugar</label>
         <select name="fbs" required>
@@ -123,7 +124,8 @@
         <small class="error-msg" id="error-trestbps">BP must be 60–200</small>
 
         <label>Diastolic BP</label>
-        <input type="number" name="diaBP" required>
+        <input type="number" name="diaBP" id="diaBP" required min="30" max="130">
+        <small class="error-msg" id="error-diaBP">Diastolic BP must be 30-130</small>
 
         <label>BMI</label>
         <input type="number" step="any" name="BMI" id="BMI" required min="10" max="60">
@@ -158,7 +160,9 @@
         { id: "glucose", min: 40, max: 300 },
         { id: "BMI", min: 10, max: 60 },
         { id: "heartRate", min: 30, max: 250 },
-        { id: "trestbps", min: 60, max: 200 }
+        { id: "trestbps", min: 60, max: 200 },
+        { id: "oldpeak", min: 0, max: 100 },
+        { id: "diaBP", min: 30, max: 130 }
       ];
 
       fields.forEach(field => {
@@ -185,7 +189,9 @@
         { id: "glucose", min: 40, max: 300 },
         { id: "BMI", min: 10, max: 60 },
         { id: "heartRate", min: 30, max: 250 },
-        { id: "trestbps", min: 60, max: 200 }
+        { id: "trestbps", min: 60, max: 200 },
+        { id: "oldpeak", min: 0, max: 100 },
+        { id: "diaBP", min: 30, max: 130 }
       ];
       let valid = true;
 

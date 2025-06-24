@@ -22,7 +22,6 @@ def form():
     return render_template('index.html')
 
 
-
 @app.route('/predict', methods=['POST'])
 def predict():
     form_data = request.form.to_dict()
@@ -73,6 +72,8 @@ def predict():
 
         main_df_comp = main_df.drop(columns=['target'], errors='ignore')
         new_row_comp = new_row.drop(columns=['target'], errors='ignore')
+
+        # Align columns to avoid mismatch issues
         main_df_comp, new_row_comp = main_df_comp.align(new_row_comp, axis=1, fill_value=None)
 
         is_duplicate = any((main_df_comp == new_row_comp.iloc[0]).all(axis=1))
@@ -92,7 +93,7 @@ def predict():
     except Exception as e:
         print(f"❌ Error saving or processing data: {e}")
 
-    
+
     def convert_user_data(data):
         cp_map = ['Typical Angina', 'Atypical Angina', 'Non-anginal Pain', 'Asymptomatic']
         ecg_map = ['Normal', 'ST-T Abnormality', 'LV Hypertrophy']
