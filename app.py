@@ -21,7 +21,6 @@ def home():
 def form():
     return render_template('index.html')
 
-
 @app.route('/predict', methods=['POST'])
 def predict():
     form_data = request.form.to_dict()
@@ -55,6 +54,14 @@ def predict():
 
     model, scaler = load_model_and_scaler()
     input_df = pd.DataFrame([features], columns=feature_columns)
+
+    # --- Add interaction features (must match retrain.py) ---
+    input_df["age_glucose"] = input_df["age"] * input_df["glucose"]
+    input_df["age_BMI"] = input_df["age"] * input_df["BMI"]
+    input_df["glucose_BMI"] = input_df["glucose"] * input_df["BMI"]
+    input_df["heartRate_exang"] = input_df["heartRate"] * input_df["exang"]
+    input_df["chol_fbs"] = input_df["chol"] * input_df["fbs"]
+
     input_scaled = scaler.transform(input_df)
     prediction = model.predict(input_scaled)[0]
     overall_result = "At Risk" if prediction == 1 else "Not At Risk"
@@ -70,10 +77,21 @@ def predict():
         else:
             main_df = pd.DataFrame(columns=feature_columns + ['target'])
 
+        # --- Add interactions to main_df if missing (ensure alignment) ---
+        for col in ["age_glucose", "age_BMI", "glucose_BMI", "heartRate_exang", "chol_fbs"]:
+            if col not in main_df.columns:
+                main_df[col] = main_df["age"] * main_df["glucose"]
+                main_df.drop(columns=[col], inplace=True)
+
+        main_df["age_glucose"] = main_df["age"] * main_df["glucose"]
+        main_df["age_BMI"] = main_df["age"] * main_df["BMI"]
+        main_df["glucose_BMI"] = main_df["glucose"] * main_df["BMI"]
+        main_df["heartRate_exang"] = main_df["heartRate"] * main_df["exang"]
+        main_df["chol_fbs"] = main_df["chol"] * main_df["fbs"]
+
         main_df_comp = main_df.drop(columns=['target'], errors='ignore')
         new_row_comp = new_row.drop(columns=['target'], errors='ignore')
 
-        # Align columns to avoid mismatch issues
         main_df_comp, new_row_comp = main_df_comp.align(new_row_comp, axis=1, fill_value=None)
 
         is_duplicate = any((main_df_comp == new_row_comp.iloc[0]).all(axis=1))
@@ -87,12 +105,19 @@ def predict():
                     updated = pd.concat([existing, new_row], ignore_index=True)
             else:
                 updated = new_row
+
             updated.to_excel(DATA_FILE, index=False)
-            images = retrain_model()
+            print("✅ New user data saved to NewData.xlsx")
+
+            # ✅ Only retrain when 20 or more new entries
+            if len(updated) >= 20:
+                print("🔁 20 or more new records found. Starting retraining...")
+                images = retrain_model()
+            else:
+                print(f"⏳ Not enough new data to retrain. {20 - len(updated)} more record(s) needed.")
 
     except Exception as e:
         print(f"❌ Error saving or processing data: {e}")
-
 
     def convert_user_data(data):
         cp_map = ['Typical Angina', 'Atypical Angina', 'Non-anginal Pain', 'Asymptomatic']
@@ -134,7 +159,6 @@ def predict():
         prediction=prediction,
         images=images
     )
-
 
 if __name__ == '__main__':
     app.run(debug=True)
