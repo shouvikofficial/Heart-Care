@@ -110,8 +110,8 @@ def predict():
             print("✅ New user data saved to NewData.xlsx")
 
             # ✅ Only retrain when 20 or more new entries
-            if len(updated) >= 20:
-                print("🔁 20 or more new records found. Starting retraining...")
+            if len(updated) >= 2:
+                print("🔁 2 or more new records found. Starting retraining...")
                 images = retrain_model()
             else:
                 print(f"⏳ Not enough new data to retrain. {20 - len(updated)} more record(s) needed.")
